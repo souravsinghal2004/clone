@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
@@ -10,15 +10,20 @@ import { Footer } from "@/components/Footer";
 
 export default function Page() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
+      {/* 🌟 Header */}
       <Header />
-      <main>
+
+      {/* 🧩 Main Content */}
+      <main className="flex-1">
         <Hero />
         <Features />
         <HowItWorks />
         <Testimonials />
         <CTA />
       </main>
+
+      {/* ⚓ Footer */}
       <Footer />
     </div>
   );
