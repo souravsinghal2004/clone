@@ -43,10 +43,10 @@ export function Hero() {
             </div>
 
             <div className="flex items-center gap-8 pt-4">
-              <div>
+              {/* <div>
                 <div className="text-3xl text-gray-900">50K+</div>
                 <div className="text-sm text-gray-600">Interviews Conducted</div>
-              </div>
+              </div> */}
               <div className="h-12 w-px bg-gray-300" />
               <div>
                 <div className="text-3xl text-gray-900">95%</div>
