@@ -4,7 +4,7 @@ import { Badge } from "./ui/badge";
 import { Sparkles, ArrowRight } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 
-export function Hero() {
+export function Hero() {g
   return (
     <section className="flex flex-col md:flex-row items-center justify-between px-10 py-16 bg-gradient-to-r from-blue-50 to-blue-100">
       <div className="max-w-xl">
