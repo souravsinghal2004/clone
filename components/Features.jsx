@@ -5,52 +5,53 @@ import { Brain, Clock, Shield, BarChart3, Users, Zap } from "lucide-react";
 const features = [
   {
     icon: Brain,
-    title: "AI-Powered Analysis",
+    title: "AI-Driven Interviews",
     description:
-      "Advanced natural language processing evaluates candidate responses with human-like understanding.",
+      "The AI listens, analyzes, and scores candidate responses instantly with deep NLP understanding.",
   },
   {
     icon: Clock,
-    title: "Save 80% Time",
+    title: "Save Interview Time",
     description:
-      "Automate initial screening interviews and focus your time on the best candidates.",
+      "Automate initial rounds so recruiters can focus only on the best-performing candidates.",
   },
   {
     icon: Shield,
-    title: "Reduce Bias",
+    title: "Fair & Unbiased",
     description:
-      "Standardized questions and objective scoring ensure fair evaluation for all candidates.",
+      "All candidates face the same structured questions, ensuring objective evaluations every time.",
   },
   {
     icon: BarChart3,
-    title: "Deep Insights",
+    title: "Instant Reports",
     description:
-      "Get detailed analytics and reports on candidate performance and hiring trends.",
+      "Both recruiter and candidate receive detailed feedback and performance insights.",
   },
   {
     icon: Users,
-    title: "Seamless Collaboration",
+    title: "Recruiter Dashboard",
     description:
-      "Share feedback and collaborate with your team in real-time throughout the hiring process.",
+      "Manage job posts, review AI evaluations, and collaborate with your hiring team in one place.",
   },
   {
     icon: Zap,
-    title: "Instant Scheduling",
+    title: "Candidate Experience",
     description:
-      "Candidates can interview anytime, anywhere. No more scheduling headaches.",
+      "Candidates can take interviews anytime, anywhere — without scheduling delays.",
   },
 ];
 
 export function Features() {
   return (
-    <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+    <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
       <div className="mx-auto max-w-7xl">
         <div className="text-center mb-16">
-          <h2 className="text-4xl text-gray-900 mb-4">
-            Everything You Need to Hire Better
+          <h2 className="text-4xl text-gray-900 mb-4 font-bold">
+            Why Choose AI Interview?
           </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Our AI interview platform combines cutting-edge technology with proven hiring best practices.
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Simplify recruitment with intelligent automation that benefits both
+            recruiters and candidates.
           </p>
         </div>
 
@@ -65,7 +66,9 @@ export function Features() {
                 <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
                   <Icon className="w-6 h-6 text-blue-600" />
                 </div>
-                <h3 className="text-xl text-gray-900 mb-2">{feature.title}</h3>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  {feature.title}
+                </h3>
                 <p className="text-gray-600">{feature.description}</p>
               </Card>
             );

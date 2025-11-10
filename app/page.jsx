@@ -19,7 +19,7 @@ export default function Page() {
         <Hero />
         <Features />
         <HowItWorks />
-        <Testimonials />
+      
         <CTA />
       </main>
 

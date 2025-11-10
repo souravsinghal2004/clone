@@ -1,186 +1,138 @@
 "use client";
+import React, { useState, useEffect, useRef } from "react";
 
-import { useEffect, useState, useRef } from "react";
-
-export default function InterviewPage() {
-  const [interviewActive, setInterviewActive] = useState(false);
-  const [lines, setLines] = useState([]); // store transcript lines
-  const [isListening, setIsListening] = useState(false);
-
-  const videoRef = useRef(null);
+const InterviewPage = () => {
+  const [transcript, setTranscript] = useState("");
+  const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef(null);
+  const videoRef = useRef(null);
 
-  // ✅ Start Interview
-  const startInterview = async () => {
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = "en-US"; // Force English transcription
+
+        recognition.onresult = async (event) => {
+          let text = "";
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            text += event.results[i][0].transcript;
+          }
+
+          // Detect Hindi or other non-English chars → translate
+          if (/[^\u0000-\u007F]/.test(text)) {
+            const translated = await translateToEnglish(text);
+            setTranscript(translated);
+          } else {
+            setTranscript(text);
+          }
+        };
+
+        recognitionRef.current = recognition;
+      } else {
+        console.error("Speech Recognition not supported in this browser.");
+      }
+    }
+  }, []);
+
+  // Backup translation (Hindi → English)
+  const translateToEnglish = async (text) => {
+    try {
+      const res = await fetch(
+        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(
+          text
+        )}&langpair=hi|en`
+      );
+      const data = await res.json();
+      return data.responseData.translatedText || text;
+    } catch (err) {
+      console.error("Translation error:", err);
+      return text;
+    }
+  };
+
+  const handleStart = async () => {
+    setIsRecording(true);
+
+    // Go fullscreen for the entire page
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) await elem.requestFullscreen();
+
+    // Start mic + recognition
+    recognitionRef.current.start();
+
+    // Start webcam
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true,
       });
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play();
-      startSpeechToText();
-      setInterviewActive(true);
-    } catch (error) {
-      alert("Allow camera and microphone access.");
-      console.error(error);
-    }
-  };
-
-  // ✅ End Interview
-  const endInterview = () => {
-    if (recognitionRef.current) recognitionRef.current.stop();
-    const stream = videoRef.current?.srcObject;
-    stream?.getTracks().forEach((track) => track.stop());
-    setInterviewActive(false);
-  };
-
-  // ✅ NLP API call
-  const sendToAPI = async (text) => {
-    try {
-      const res = await fetch("/api/nlp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-
-      const data = await res.json();
-      if (data.text) {
-        setLines((prev) => [...prev, data.text]);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
       }
     } catch (err) {
-      console.error("API error:", err);
+      console.error("Camera or mic error:", err);
     }
   };
 
-  // ✅ Speech Recognition setup
-  const startSpeechToText = () => {
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
+  const handleStop = async () => {
+    setIsRecording(false);
 
-    if (!SpeechRecognition) {
-      alert("Speech Recognition not supported in this browser.");
-      return;
+    // Stop recognition
+    if (recognitionRef.current) recognitionRef.current.stop();
+
+    // Stop all media tracks (camera + mic)
+    if (videoRef.current && videoRef.current.srcObject) {
+      const tracks = videoRef.current.srcObject.getTracks();
+      tracks.forEach((track) => track.stop());
+      videoRef.current.srcObject = null;
     }
 
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = false;
-    recognition.lang = "auto"; // detects other languages
-
-    recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => {
-      setIsListening(false);
-      if (interviewActive) recognition.start(); // restart if still in interview
-    };
-
-    recognition.onresult = async (event) => {
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        const text = event.results[i][0].transcript.trim();
-        if (event.results[i].isFinal && text) {
-          await sendToAPI(text);
-        }
-      }
-    };
-
-    recognition.start();
-    recognitionRef.current = recognition;
+    // Exit fullscreen
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    }
   };
 
   return (
-    <div
-      style={{
-        width: "100vw",
-        height: "100vh",
-        background: "#000",
-        color: "#fff",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}
-    >
-      {!interviewActive ? (
-        <button
-          onClick={startInterview}
-          style={{
-            padding: "1rem 3rem",
-            fontSize: "1.5rem",
-            background: "red",
-            border: "none",
-            borderRadius: "10px",
-            color: "white",
-            cursor: "pointer",
-          }}
-        >
-          Start Interview
-        </button>
-      ) : (
-        <button
-          onClick={endInterview}
-          style={{
-            position: "fixed",
-            bottom: "30px",
-            right: "30px",
-            padding: "1rem 3rem",
-            fontSize: "1.5rem",
-            background: "green",
-            border: "none",
-            borderRadius: "10px",
-            color: "white",
-            cursor: "pointer",
-            zIndex: 1000,
-          }}
-        >
-          End Interview
-        </button>
-      )}
+    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
+      <h1 className="text-2xl font-bold mb-4">AI Interview</h1>
 
-      {/* 🎥 Video Feed */}
       <video
         ref={videoRef}
         autoPlay
-        playsInline
         muted
-        style={{
-          position: "fixed",
-          top: "20px",
-          right: "20px",
-          width: "260px",
-          height: "190px",
-          borderRadius: "10px",
-          objectFit: "cover",
-          border: "2px solid white",
-          zIndex: 500,
-          display: interviewActive ? "block" : "none",
-        }}
+        playsInline
+        className="w-80 h-60 border-2 border-green-400 rounded-xl mb-4 transform scale-x-[-1]"
       />
 
-      {/* 💬 Translated Transcript */}
-      <div
-        style={{
-          position: "fixed",
-          top: "230px",
-          right: "20px",
-          width: "300px",
-          height: "300px",
-          background: "rgba(255,255,255,0.1)",
-          borderRadius: "10px",
-          padding: "10px",
-          overflowY: "auto",
-        }}
-      >
-        {lines.length > 0 ? (
-          lines.map((line, idx) => (
-            <p key={idx} style={{ marginBottom: "5px" }}>
-              {line}
-            </p>
-          ))
+      <div className="flex gap-4">
+        {!isRecording ? (
+          <button
+            onClick={handleStart}
+            className="bg-green-500 px-5 py-2 rounded-lg text-black font-semibold"
+          >
+            Start Interview
+          </button>
         ) : (
-          <p style={{ opacity: 0.6, textAlign: "center" }}>🎤 Listening...</p>
+          <button
+            onClick={handleStop}
+            className="bg-red-600 px-5 py-2 rounded-lg text-white font-semibold"
+          >
+            End Interview
+          </button>
         )}
+      </div>
+
+      <div className="mt-6 w-[80%] bg-[#1a1a1a] p-4 rounded-lg min-h-[150px]">
+        <p>{transcript || "Start speaking..."}</p>
       </div>
     </div>
   );
-}
+};
+
+export default InterviewPage;
