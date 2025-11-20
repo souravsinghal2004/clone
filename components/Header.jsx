@@ -50,7 +50,6 @@ export function Header() {
            </SignedOut>
             <Button
               className="bg-blue-600 hover:bg-blue-700"
-              onClick={() => router.push("/interview")}
             >
               Get Started
             </Button>
