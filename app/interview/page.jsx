@@ -1,138 +1,164 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
 
-const InterviewPage = () => {
-  const [transcript, setTranscript] = useState("");
-  const [isRecording, setIsRecording] = useState(false);
-  const recognitionRef = useRef(null);
-  const videoRef = useRef(null);
+import React, { useState, useRef, useEffect } from "react";
+import Webcam from "react-webcam";
+import webgazer from "webgazer";
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = "en-US"; // Force English transcription
+export default function InterviewPage() {
+  const [phase, setPhase] = useState("idle"); // idle | calibrating | interviewing
+  const [isLookingAtScreen, setIsLookingAtScreen] = useState(true);
+  const webcamRef = useRef(null);
+  const mediaStreamRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const recordedChunks = useRef([]);
 
-        recognition.onresult = async (event) => {
-          let text = "";
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            text += event.results[i][0].transcript;
-          }
-
-          // Detect Hindi or other non-English chars → translate
-          if (/[^\u0000-\u007F]/.test(text)) {
-            const translated = await translateToEnglish(text);
-            setTranscript(translated);
-          } else {
-            setTranscript(text);
-          }
-        };
-
-        recognitionRef.current = recognition;
-      } else {
-        console.error("Speech Recognition not supported in this browser.");
-      }
-    }
-  }, []);
-
-  // Backup translation (Hindi → English)
-  const translateToEnglish = async (text) => {
-    try {
-      const res = await fetch(
-        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(
-          text
-        )}&langpair=hi|en`
-      );
-      const data = await res.json();
-      return data.responseData.translatedText || text;
-    } catch (err) {
-      console.error("Translation error:", err);
-      return text;
-    }
-  };
-
-  const handleStart = async () => {
-    setIsRecording(true);
-
-    // Go fullscreen for the entire page
-    const elem = document.documentElement;
-    if (elem.requestFullscreen) await elem.requestFullscreen();
-
-    // Start mic + recognition
-    recognitionRef.current.start();
-
-    // Start webcam
+  // Start mic & camera
+  const startCameraAndMic = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true,
       });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
+      mediaStreamRef.current = stream;
+      if (webcamRef.current) {
+        webcamRef.current.srcObject = stream;
       }
+
+      // Setup voice recording
+      mediaRecorderRef.current = new MediaRecorder(stream);
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) recordedChunks.current.push(event.data);
+      };
+      mediaRecorderRef.current.start();
     } catch (err) {
-      console.error("Camera or mic error:", err);
+      console.error("Camera/Mic error:", err);
     }
   };
 
-  const handleStop = async () => {
-    setIsRecording(false);
-
-    // Stop recognition
-    if (recognitionRef.current) recognitionRef.current.stop();
-
-    // Stop all media tracks (camera + mic)
-    if (videoRef.current && videoRef.current.srcObject) {
-      const tracks = videoRef.current.srcObject.getTracks();
-      tracks.forEach((track) => track.stop());
-      videoRef.current.srcObject = null;
+  // Stop mic & camera
+  const stopCameraAndMic = () => {
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
     }
-
-    // Exit fullscreen
-    if (document.fullscreenElement) {
-      await document.exitFullscreen();
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
     }
+  };
+
+  // Calibration first, then interview
+  const startInterview = async () => {
+    await startCameraAndMic();
+    setPhase("calibrating");
+
+    setTimeout(() => {
+      setPhase("interviewing");
+      document.documentElement.requestFullscreen().catch(() => {});
+    }, 4000); // 4s calibration
+  };
+
+  // End interview
+  const endInterview = () => {
+    stopCameraAndMic();
+    document.exitFullscreen().catch(() => {});
+    setPhase("idle");
+    webgazer.end();
+  };
+
+  // Eye tracking setup (WebGazer)
+  useEffect(() => {
+    if (phase !== "interviewing") return;
+
+    webgazer.setRegression("ridge")
+      .setTracker("clmtrackr")
+      .setGazeListener((data) => {
+        if (!data) return;
+
+        const target = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+        const dx = Math.abs(data.x - target.x);
+        const dy = Math.abs(data.y - target.y);
+        const THRESHOLD_PX = 180;
+        const onScreen = dx < THRESHOLD_PX && dy < THRESHOLD_PX;
+        setIsLookingAtScreen(onScreen);
+      })
+      .begin();
+
+    // Hide debug video preview
+    webgazer.showVideoPreview(false).showPredictionPoints(false);
+
+    return () => {
+      webgazer.clearGazeListener();
+    };
+  }, [phase]);
+
+  // When “Add Interview” is clicked — close mic/cam
+  const handleAddInterview = () => {
+    stopCameraAndMic();
+    setPhase("idle");
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
-      <h1 className="text-2xl font-bold mb-4">AI Interview</h1>
+    <div
+      className={`flex flex-col items-center justify-center min-h-screen transition-colors duration-300 ${
+        phase === "interviewing"
+          ? isLookingAtScreen
+            ? "border-8 border-green-500"
+            : "border-8 border-red-500"
+          : ""
+      }`}
+    >
+      <h1 className="text-3xl font-bold mb-6">
+        {phase === "idle" && "Interview Setup"}
+        {phase === "calibrating" && "Calibrating... Please look at the screen"}
+        {phase === "interviewing" && "Interview in Progress"}
+      </h1>
 
-      <video
-        ref={videoRef}
-        autoPlay
-        muted
-        playsInline
-        className="w-80 h-60 border-2 border-green-400 rounded-xl mb-4 transform scale-x-[-1]"
-      />
+      {/* Webcam only visible during calibration & interview */}
+      {(phase === "calibrating" || phase === "interviewing") && (
+        <div className="rounded-2xl overflow-hidden shadow-md">
+          <Webcam
+            ref={webcamRef}
+            mirrored
+            audio={false}
+            className="w-[400px] h-[300px]"
+          />
+        </div>
+      )}
 
-      <div className="flex gap-4">
-        {!isRecording ? (
+      {/* Buttons */}
+      <div className="flex gap-4 mt-8">
+        {phase === "idle" && (
+          <>
+            <button
+              onClick={handleAddInterview}
+              className="bg-gray-700 text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition"
+            >
+              Add Interview
+            </button>
+            <button
+              onClick={startInterview}
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
+            >
+              Start Interview
+            </button>
+          </>
+        )}
+
+        {(phase === "calibrating" || phase === "interviewing") && (
           <button
-            onClick={handleStart}
-            className="bg-green-500 px-5 py-2 rounded-lg text-black font-semibold"
-          >
-            Start Interview
-          </button>
-        ) : (
-          <button
-            onClick={handleStop}
-            className="bg-red-600 px-5 py-2 rounded-lg text-white font-semibold"
+            onClick={endInterview}
+            className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition"
           >
             End Interview
           </button>
         )}
       </div>
 
-      <div className="mt-6 w-[80%] bg-[#1a1a1a] p-4 rounded-lg min-h-[150px]">
-        <p>{transcript || "Start speaking..."}</p>
-      </div>
+      {/* Small calibration instruction */}
+      {phase === "calibrating" && (
+        <p className="mt-4 text-gray-600">
+          Align your face and look at the center of the screen...
+        </p>
+      )}
     </div>
   );
-};
-
-export default InterviewPage;
+}

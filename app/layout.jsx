@@ -1,4 +1,5 @@
 import './globals.css';
+import { ClerkProvider } from '@clerk/nextjs';
 
 export const metadata = {
   title: "InterviewAI - Ace Your Next Interview",
@@ -7,8 +8,13 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
+ 
+  <ClerkProvider>
+    
+    
     <html lang="en">
       <body className="bg-white text-gray-900">{children}</body>
     </html>
-  );
+  </ClerkProvider>
+  )
 }

@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
 import { Sparkles, Menu } from "lucide-react";
+import Link from "next/link";
+import { SignedIn, SignedOut, SignIn, SignInButton, UserButton } from "@clerk/nextjs";
 
 
 export function Header() {
@@ -40,9 +42,12 @@ export function Header() {
 
           {/* CTA Buttons */}
           <div className="hidden md:flex items-center gap-4">
-            <Button variant="ghost"  
-            onClick={() => router.push("/time")}
-            >Sign In</Button>
+           <SignedIn>
+            <UserButton/>
+           </SignedIn>
+           <SignedOut>
+            <SignInButton/>
+           </SignedOut>
             <Button
               className="bg-blue-600 hover:bg-blue-700"
               onClick={() => router.push("/interview")}
@@ -76,7 +81,12 @@ export function Header() {
               Testimonials
             </a>
             <div className="flex flex-col gap-2 pt-4">
-              <Button variant="ghost" className="w-full">Sign In</Button>
+           <Button
+                className="w-full bg-blue-600 hover:bg-blue-700"
+                onClick={() => router.push("/sign-in")}
+              >
+                Sign-in
+              </Button>
               <Button
                 className="w-full bg-blue-600 hover:bg-blue-700"
                 onClick={() => router.push("/interview")}
