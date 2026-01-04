@@ -4,6 +4,7 @@ import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
+import { Header } from "@/components/Header";
 
 export default function UserDashboardPage() {
   const { isLoaded, isSignedIn, user } = useUser();
@@ -32,7 +33,7 @@ export default function UserDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-
+<Header/>
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r px-6 py-8">
         <h2 className="text-xl font-bold text-blue-600 mb-8">
